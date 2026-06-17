@@ -1,79 +1,77 @@
-import { sql } from "@vercel/postgres";
-import { randomUUID } from "crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { NewRecipe, Recipe } from "./types";
 
 /**
- * Server-side recipe storage backed by Vercel Postgres.
+ * Server-side recipe storage backed by Supabase (Postgres + PostgREST).
  *
- * Persistence is optional: when no Postgres connection string is present
- * (e.g. local dev or a fresh deploy without a database attached) every
- * function reports "not configured" and the client transparently falls
- * back to browser localStorage. Attach a Postgres store in the Vercel
- * dashboard and these functions light up automatically — no code change.
+ * Persistence is optional: when the Supabase env vars are absent (e.g.
+ * local dev before you've added keys) every function reports "not
+ * configured" and the client transparently falls back to browser
+ * localStorage. Set the env vars and these light up — no code change.
+ *
+ * Required env:
+ *   NEXT_PUBLIC_SUPABASE_URL      e.g. https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY     server-only key (bypasses RLS)
  */
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SERVICE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+
+const TABLE = "recipes";
+
 export function isDbConfigured(): boolean {
-  return Boolean(
-    process.env.POSTGRES_URL ||
-      process.env.POSTGRES_PRISMA_URL ||
-      process.env.DATABASE_URL
-  );
+  return Boolean(SUPABASE_URL && SERVICE_KEY);
 }
 
-let initialized = false;
+let client: SupabaseClient | null = null;
 
-async function ensureTable(): Promise<void> {
-  if (initialized) return;
-  await sql`
-    CREATE TABLE IF NOT EXISTS recipes (
-      id          TEXT PRIMARY KEY,
-      title       TEXT NOT NULL,
-      url         TEXT NOT NULL,
-      video_id    TEXT NOT NULL,
-      markdown    TEXT NOT NULL,
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `;
-  initialized = true;
+function getClient(): SupabaseClient {
+  if (!client) {
+    client = createClient(SUPABASE_URL as string, SERVICE_KEY as string, {
+      auth: { persistSession: false },
+    });
+  }
+  return client;
 }
 
 export async function listRecipes(): Promise<Recipe[]> {
-  await ensureTable();
-  const { rows } = await sql`
-    SELECT id, title, url, video_id, markdown, created_at
-    FROM recipes
-    ORDER BY created_at DESC;
-  `;
-  return rows.map(toRecipe);
+  const { data, error } = await getClient()
+    .from(TABLE)
+    .select("id, title, url, video_id, markdown, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toRecipe);
 }
 
 export async function createRecipe(input: NewRecipe): Promise<Recipe> {
-  await ensureTable();
-  const id = randomUUID();
-  const { rows } = await sql`
-    INSERT INTO recipes (id, title, url, video_id, markdown)
-    VALUES (${id}, ${input.title}, ${input.url}, ${input.videoId}, ${input.markdown})
-    RETURNING id, title, url, video_id, markdown, created_at;
-  `;
-  return toRecipe(rows[0]);
+  const { data, error } = await getClient()
+    .from(TABLE)
+    .insert({
+      title: input.title,
+      url: input.url,
+      video_id: input.videoId,
+      markdown: input.markdown,
+    })
+    .select("id, title, url, video_id, markdown, created_at")
+    .single();
+  if (error) throw new Error(error.message);
+  return toRecipe(data);
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
-  await ensureTable();
-  await sql`DELETE FROM recipes WHERE id = ${id};`;
+  const { error } = await getClient().from(TABLE).delete().eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toRecipe(row: any): Recipe {
   return {
-    id: row.id,
+    id: String(row.id),
     title: row.title,
     url: row.url,
     videoId: row.video_id,
     markdown: row.markdown,
-    createdAt:
-      row.created_at instanceof Date
-        ? row.created_at.toISOString()
-        : new Date(row.created_at).toISOString(),
+    createdAt: new Date(row.created_at).toISOString(),
   };
 }
