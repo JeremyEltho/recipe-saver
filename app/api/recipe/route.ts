@@ -11,7 +11,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
 export async function POST(req: Request) {
   let url: string;
@@ -98,6 +98,7 @@ export async function POST(req: Request) {
 
   // Strip stray code fences the model sometimes wraps markdown in.
   markdown = markdown.replace(/^```(?:markdown)?\s*/i, "").replace(/```$/i, "").trim();
+  markdown = cleanRecipeMarkdown(markdown);
 
   return NextResponse.json({
     videoId,
@@ -105,6 +106,29 @@ export async function POST(req: Request) {
     title: parseTitle(markdown),
     markdown,
   });
+}
+
+/**
+ * Tidy up the model output. The prompt's format example uses square-bracket
+ * placeholders (e.g. "[Quantity] [Measurement] [Ingredient]"), which the
+ * model sometimes echoes literally or wraps real values in. Strip the
+ * leftover example lines and unwrap bracketed tokens — without touching
+ * markdown links like [text](url).
+ */
+function cleanRecipeMarkdown(markdown: string): string {
+  const placeholderLine =
+    /^\s*[-*]?\s*\[?\s*(Quantity|Action Verb)\b.*$/i;
+
+  const lines = markdown
+    .split("\n")
+    .filter((line) => !placeholderLine.test(line));
+
+  return lines
+    .join("\n")
+    // unwrap [token] -> token, but preserve [label](link)
+    .replace(/\[([^\]]+)\](?!\()/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Minimal HTML entity decode for transcript text (&amp;#39; etc.). */

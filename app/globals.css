@@ -27,20 +27,22 @@
   /* ruled lines */
   --rule: rgba(120, 150, 170, 0.28);
   --margin-line: rgba(178, 58, 46, 0.4);
-
-  --font-hand: var(--font-hand), "Comic Sans MS", cursive;
-  --font-body: var(--font-body), Georgia, serif;
-  --font-type: var(--font-type), "Courier New", monospace;
 }
+
+/*
+ * Fonts arrive as CSS variables from next/font (set on <html>):
+ *   --font-hand  Caveat        (handwritten headings)
+ *   --font-body  Lora          (serif body)
+ *   --font-type  Special Elite (typewriter labels)
+ * next/font already appends a metric-matched fallback, so classes consume
+ * these variables directly (see body, .masthead, .md, etc.).
+ */
 
 @theme inline {
   --color-paper: var(--paper);
   --color-ink: var(--ink);
   --color-brick: var(--brick);
   --color-sage: var(--sage);
-  --font-hand: var(--font-hand);
-  --font-body: var(--font-body);
-  --font-type: var(--font-type);
 }
 
 * {
