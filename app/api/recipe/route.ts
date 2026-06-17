@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { YoutubeTranscript } from "youtube-transcript";
 import { extractVideoId } from "@/lib/extractVideoId";
+import { fetchTranscript } from "@/lib/transcript";
 import {
   SYSTEM_PROMPT,
   buildUserContent,
@@ -45,28 +45,16 @@ export async function POST(req: Request) {
     );
   }
 
-  // 1. Fetch the transcript -------------------------------------------------
+  // 1. Fetch the transcript (Supadata in prod, library locally) -------------
   let transcript: string;
   try {
-    const snippets = await YoutubeTranscript.fetchTranscript(videoId);
-    transcript = snippets
-      .map((s) => decodeEntities(s.text))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
+    transcript = await fetchTranscript(videoId);
   } catch {
     return NextResponse.json(
       {
         error:
-          "Couldn't find a transcript for that video. It may have captions disabled.",
+          "Couldn't get a transcript for that video. It may have captions disabled, or the transcript service is unavailable.",
       },
-      { status: 404 }
-    );
-  }
-
-  if (!transcript) {
-    return NextResponse.json(
-      { error: "The transcript for that video was empty." },
       { status: 404 }
     );
   }
@@ -129,16 +117,4 @@ function cleanRecipeMarkdown(markdown: string): string {
     .replace(/\[([^\]]+)\](?!\()/g, "$1")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-}
-
-/** Minimal HTML entity decode for transcript text (&amp;#39; etc.). */
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&amp;#39;/g, "'")
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;quot;/g, '"')
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
 }
