@@ -1,0 +1,580 @@
+@import "tailwindcss";
+
+/* ============================================================
+   THE RECIPE NOTEBOOK — warm vintage kitchen journal
+   ============================================================ */
+
+:root {
+  /* paper + ink */
+  --paper: #f4ead2;
+  --paper-hi: #fbf4e1;
+  --paper-lo: #ead9b6;
+  --ink: #34291b;
+  --ink-soft: #6b5840;
+  --ink-faint: #9a866a;
+
+  /* accents */
+  --brick: #b23a2e; /* recipe-card red — titles, ribbon, errors */
+  --brick-deep: #8c2c22;
+  --sage: #6d7a45; /* tags, success */
+  --gold: #c08a2d; /* highlights */
+
+  /* binding + cover */
+  --kraft: #b07b46;
+  --kraft-deep: #7c5328;
+  --leather: #5c3a1e;
+
+  /* ruled lines */
+  --rule: rgba(120, 150, 170, 0.28);
+  --margin-line: rgba(178, 58, 46, 0.4);
+
+  --font-hand: var(--font-hand), "Comic Sans MS", cursive;
+  --font-body: var(--font-body), Georgia, serif;
+  --font-type: var(--font-type), "Courier New", monospace;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-brick: var(--brick);
+  --color-sage: var(--sage);
+  --font-hand: var(--font-hand);
+  --font-body: var(--font-body);
+  --font-type: var(--font-type);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* warm wooden desk with a soft pool of light in the centre */
+  background-color: #6f4b2c;
+  background-image:
+    radial-gradient(
+      ellipse 90% 70% at 50% 38%,
+      rgba(247, 226, 184, 0.5),
+      rgba(90, 58, 30, 0) 70%
+    ),
+    repeating-linear-gradient(
+      92deg,
+      #6b4727 0px,
+      #6b4727 3px,
+      #714c2b 3px,
+      #714c2b 6px
+    ),
+    linear-gradient(180deg, #5c3a1e, #74502d);
+  background-attachment: fixed;
+}
+
+/* film-grain overlay across everything */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- layout shell ---------- */
+
+.desk {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1rem, 4vw, 3.5rem) 1rem 4rem;
+}
+
+.masthead {
+  text-align: center;
+  margin-bottom: clamp(1rem, 3vw, 2rem);
+  color: var(--paper-hi);
+}
+.masthead h1 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 7vw, 4.6rem);
+  margin: 0;
+  line-height: 0.95;
+  color: #fbf4e1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25), 0 6px 18px rgba(0, 0, 0, 0.4);
+  transform: rotate(-1.5deg);
+}
+.masthead p {
+  font-family: var(--font-type);
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(251, 244, 225, 0.7);
+  margin: 0.6rem 0 0;
+}
+
+/* ---------- the book ---------- */
+
+.book {
+  position: relative;
+  width: min(960px, 100%);
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  border-radius: 6px 14px 14px 6px;
+  background: var(--leather);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.15) inset,
+    0 30px 60px -20px rgba(0, 0, 0, 0.65),
+    0 10px 24px rgba(0, 0, 0, 0.4);
+  padding: 14px 16px 14px 10px;
+}
+
+/* the spine / binder rings column */
+.spine {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 26px;
+  padding-top: 26px;
+}
+.ring {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #fff, #b9b9bd 40%, #6f6f76 75%, #3c3c42);
+  box-shadow:
+    0 2px 3px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+.ring::after {
+  /* punched hole shadow on the page */
+  content: "";
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+  transform: translateY(-50%);
+  filter: blur(0.5px);
+}
+
+/* the paper page */
+.page {
+  position: relative;
+  background-color: var(--paper);
+  background-image:
+    /* coffee ring, faint */
+    radial-gradient(
+      circle at 85% 12%,
+      rgba(140, 90, 40, 0) 18px,
+      rgba(140, 90, 40, 0.1) 19px,
+      rgba(140, 90, 40, 0.1) 21px,
+      rgba(140, 90, 40, 0) 22px
+    ),
+    radial-gradient(ellipse at 50% 0%, var(--paper-hi), rgba(0, 0, 0, 0) 60%),
+    linear-gradient(180deg, var(--paper-hi), var(--paper) 12%, var(--paper-lo));
+  border-radius: 3px 10px 10px 3px;
+  box-shadow:
+    inset 0 0 0 1px rgba(120, 80, 30, 0.12),
+    inset 0 0 60px rgba(120, 80, 30, 0.12),
+    0 2px 4px rgba(0, 0, 0, 0.18);
+  min-height: 540px;
+  overflow: hidden;
+}
+
+/* ruled lines + red margin */
+.page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--margin-line), var(--margin-line));
+  background-size: 2px 100%;
+  background-position: 52px 0;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+
+.sheet {
+  position: relative;
+  padding: clamp(1.75rem, 3.5vw, 2.75rem) clamp(1.5rem, 4vw, 3rem)
+    clamp(2rem, 4vw, 3rem) clamp(4rem, 7vw, 5rem);
+  z-index: 1;
+}
+
+/* ---------- tabs (saved recipes) ---------- */
+
+.tabs {
+  position: absolute;
+  top: 18px;
+  right: -10px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  z-index: 5;
+  max-height: calc(100% - 36px);
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.tab {
+  font-family: var(--font-hand);
+  font-size: 1.18rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper-lo);
+  border: none;
+  border-left: 4px solid var(--sage);
+  border-radius: 0 7px 7px 0;
+  padding: 9px 14px 9px 12px;
+  max-width: 168px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.22);
+  transform: translateX(0);
+  transition: transform 0.18s ease, background 0.18s ease;
+  text-align: left;
+}
+.tab:nth-child(3n) { border-left-color: var(--brick); }
+.tab:nth-child(3n + 1) { border-left-color: var(--gold); }
+.tab:hover { transform: translateX(-8px); background: var(--paper-hi); }
+.tab.active {
+  transform: translateX(-14px);
+  background: var(--paper-hi);
+  font-weight: 700;
+  box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.3);
+}
+.tab.new-tab {
+  font-family: var(--font-type);
+  font-size: 0.82rem;
+  border-left-color: var(--ink-soft);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- new-recipe capture ---------- */
+
+.kicker {
+  font-family: var(--font-type);
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  color: var(--brick);
+  margin-bottom: 0.4rem;
+}
+.page-title {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: clamp(2.1rem, 5vw, 3.1rem);
+  color: var(--ink);
+  margin: 0 0 1.4rem;
+  line-height: 1;
+}
+.capture {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 540px;
+}
+.capture label {
+  font-family: var(--font-type);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.url-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.url-field {
+  flex: 1 1 280px;
+  font-family: var(--font-type);
+  font-size: 1rem;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--ink-faint);
+  padding: 0.5rem 0.2rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.url-field::placeholder { color: var(--ink-faint); }
+.url-field:focus { border-color: var(--brick); }
+
+/* ---------- buttons ---------- */
+
+.btn {
+  font-family: var(--font-type);
+  font-size: 0.82rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 4px;
+  padding: 0.7rem 1.2rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2), 0 5px 10px rgba(0, 0, 0, 0.18);
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.btn-primary { background: var(--brick); color: #fff6e9; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.06); }
+.btn-save { background: var(--sage); color: #f7f4e4; }
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-soft);
+  box-shadow: none;
+  border: 1px solid var(--ink-faint);
+  padding: 0.5rem 0.9rem;
+}
+.btn-ghost:hover { background: rgba(0, 0, 0, 0.04); }
+.btn-danger {
+  background: transparent;
+  color: var(--brick-deep);
+  box-shadow: none;
+  border: 1px dashed var(--brick);
+  padding: 0.5rem 0.9rem;
+}
+.btn-danger:hover { background: rgba(178, 58, 46, 0.08); }
+
+/* ---------- status / errors ---------- */
+
+.note {
+  font-family: var(--font-type);
+  font-size: 0.82rem;
+  padding: 0.7rem 1rem;
+  border-radius: 4px;
+  margin-top: 1rem;
+  line-height: 1.4;
+}
+.note-error {
+  color: var(--brick-deep);
+  background: rgba(178, 58, 46, 0.1);
+  border: 1px solid rgba(178, 58, 46, 0.3);
+}
+.note-info {
+  color: var(--ink-soft);
+  background: rgba(120, 80, 30, 0.08);
+  border: 1px solid rgba(120, 80, 30, 0.18);
+}
+
+/* simmering loader */
+.simmer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-type);
+  color: var(--ink-soft);
+}
+.simmer .pot {
+  font-size: 1.2rem;
+  animation: wobble 1.1s ease-in-out infinite;
+}
+@keyframes wobble {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+.steam {
+  display: inline-block;
+  animation: rise 1.4s ease-in-out infinite;
+}
+@keyframes rise {
+  0% { opacity: 0; transform: translateY(4px); }
+  40% { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+
+/* ---------- recipe markdown ---------- */
+
+.recipe-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.4rem;
+  flex-wrap: wrap;
+}
+.recipe-meta {
+  font-family: var(--font-type);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.recipe-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+.md h1 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5.5vw, 3.2rem);
+  color: var(--brick);
+  line-height: 1;
+  margin: 0 0 1.2rem;
+  transform: rotate(-0.6deg);
+}
+.md h2 {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3.5vw, 2.1rem);
+  color: var(--ink);
+  margin: 1.6rem 0 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.md h2::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background: var(--gold);
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+.md p { margin: 0.6rem 0; line-height: 1.7; }
+
+/* ingredients */
+.md ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.md ul li {
+  position: relative;
+  padding-left: 1.7rem;
+  line-height: 1.6;
+}
+.md ul li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.45em;
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1.5px solid var(--sage);
+  border-radius: 3px;
+  background: rgba(109, 122, 69, 0.12);
+}
+
+/* instructions */
+.md ol {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0.4rem 0;
+  display: grid;
+  gap: 0.85rem;
+}
+.md ol li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 3rem;
+  line-height: 1.7;
+  min-height: 2.2rem;
+}
+.md ol li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: -0.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: #fff6e9;
+  background: var(--brick);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+.md ol li strong { color: var(--brick-deep); }
+.md strong { font-weight: 600; }
+.md em { color: var(--ink-soft); }
+.md a { color: var(--brick-deep); text-decoration: underline; }
+
+/* ---------- page transition ---------- */
+
+.page-enter {
+  animation: pageIn 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transform-origin: left center;
+}
+@keyframes pageIn {
+  0% { opacity: 0; transform: rotateY(-14deg) translateX(-10px); }
+  100% { opacity: 1; transform: rotateY(0) translateX(0); }
+}
+
+.ink-in > * {
+  opacity: 0;
+  animation: inkIn 0.5s ease forwards;
+}
+.ink-in > *:nth-child(1) { animation-delay: 0.04s; }
+.ink-in > *:nth-child(2) { animation-delay: 0.12s; }
+.ink-in > *:nth-child(3) { animation-delay: 0.2s; }
+.ink-in > *:nth-child(4) { animation-delay: 0.28s; }
+.ink-in > *:nth-child(5) { animation-delay: 0.36s; }
+.ink-in > *:nth-child(6) { animation-delay: 0.44s; }
+@keyframes inkIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* saved stamp */
+.stamp {
+  display: inline-block;
+  font-family: var(--font-type);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sage);
+  border: 2px solid var(--sage);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  transform: rotate(-7deg);
+  opacity: 0.85;
+}
+
+.empty-hint {
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  color: var(--ink-faint);
+  transform: rotate(-1.5deg);
+  margin-top: 2rem;
+}
+
+/* footer credit */
+.colophon {
+  margin-top: 1.6rem;
+  font-family: var(--font-type);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: rgba(251, 244, 225, 0.55);
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .book { grid-template-columns: 40px 1fr; padding-left: 6px; }
+  .ring { width: 18px; height: 18px; }
+  .tabs { right: -4px; }
+  .tab { max-width: 120px; font-size: 1rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, .page-enter, .ink-in > * { animation: none !important; }
+}
