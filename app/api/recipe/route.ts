@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { extractVideoId } from "@/lib/extractVideoId";
 import { fetchTranscript } from "@/lib/transcript";
+import { createRecipe, isDbConfigured } from "@/lib/db";
 import {
   SYSTEM_PROMPT,
   buildUserContent,
@@ -13,53 +14,71 @@ export const maxDuration = 60;
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
+// Allow the browser extension (and the web app) to call this cross-origin.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+function json(data: unknown, status = 200) {
+  return NextResponse.json(data, { status, headers: CORS_HEADERS });
+}
+
+export function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function POST(req: Request) {
-  let url: string;
+  let body: { url?: string; transcript?: string; save?: boolean };
   try {
-    const body = await req.json();
-    url = body?.url;
+    body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return json({ error: "Invalid request body." }, 400);
   }
 
+  const { url, save } = body;
+  // A transcript supplied by the extension (pulled from the page DOM on the
+  // user's residential IP) bypasses server-side fetching entirely.
+  const providedTranscript =
+    typeof body.transcript === "string" ? body.transcript.trim() : "";
+
   if (!url || typeof url !== "string") {
-    return NextResponse.json(
-      { error: "Please provide a YouTube URL." },
-      { status: 400 }
-    );
+    return json({ error: "Please provide a YouTube URL." }, 400);
   }
 
   const videoId = extractVideoId(url);
   if (!videoId) {
-    return NextResponse.json(
-      { error: "That doesn't look like a valid YouTube link." },
-      { status: 400 }
-    );
+    return json({ error: "That doesn't look like a valid YouTube link." }, 400);
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json(
+    return json(
       { error: "Server is missing GEMINI_API_KEY. Add it to your environment." },
-      { status: 500 }
+      500
     );
   }
 
-  // 1. Fetch the transcript (Supadata in prod, library locally) -------------
+  // 1. Get the transcript: use the one the extension supplied, otherwise fetch.
   let transcript: string;
-  try {
-    transcript = await fetchTranscript(videoId);
-  } catch {
-    return NextResponse.json(
-      {
-        error:
-          "Couldn't get a transcript for that video. It may have captions disabled, or the transcript service is unavailable.",
-      },
-      { status: 404 }
-    );
+  if (providedTranscript) {
+    transcript = providedTranscript;
+  } else {
+    try {
+      transcript = await fetchTranscript(videoId);
+    } catch {
+      return json(
+        {
+          error:
+            "Couldn't get a transcript for that video. It may have captions disabled, or the transcript service is unavailable. Tip: use the browser extension to pull it from the page instead.",
+        },
+        404
+      );
+    }
   }
 
-  // 2. Ask Gemini to extract the recipe ------------------------------------
+  // 2. Ask Gemini to extract the recipe.
   let markdown: string;
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -71,29 +90,33 @@ export async function POST(req: Request) {
     markdown = result.response.text().trim();
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: `Gemini request failed: ${message}` },
-      { status: 502 }
-    );
+    return json({ error: `Gemini request failed: ${message}` }, 502);
   }
 
   if (!markdown) {
-    return NextResponse.json(
-      { error: "Gemini returned an empty recipe. Try again." },
-      { status: 502 }
-    );
+    return json({ error: "Gemini returned an empty recipe. Try again." }, 502);
   }
 
-  // Strip stray code fences the model sometimes wraps markdown in.
+  // Strip stray code fences and leftover prompt placeholders.
   markdown = markdown.replace(/^```(?:markdown)?\s*/i, "").replace(/```$/i, "").trim();
   markdown = cleanRecipeMarkdown(markdown);
 
-  return NextResponse.json({
-    videoId,
-    url: `https://www.youtube.com/watch?v=${videoId}`,
-    title: parseTitle(markdown),
-    markdown,
-  });
+  const title = parseTitle(markdown);
+  const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // 3. Optionally persist to Supabase (when the extension asks and a DB exists).
+  let saved = false;
+  if (save && isDbConfigured()) {
+    try {
+      await createRecipe({ title, url: canonicalUrl, videoId, markdown });
+      saved = true;
+    } catch {
+      // Non-fatal: still return the recipe so the caller can show/keep it.
+      saved = false;
+    }
+  }
+
+  return json({ videoId, url: canonicalUrl, title, markdown, saved });
 }
 
 /**
