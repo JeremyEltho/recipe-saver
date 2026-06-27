@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>Recipe Notebook</title>
+  </head>
+  <body>
+    <header class="bar">
+      <h1>Recipe&nbsp;Notebook</h1>
+      <button id="settings-toggle" class="link" title="Settings">⚙</button>
+    </header>
+
+    <section id="settings" class="settings hidden">
+      <label for="api-base">Backend URL</label>
+      <input id="api-base" type="url" placeholder="https://recipe-notebook-lovat.vercel.app" />
+      <button id="save-settings" class="btn-ghost">Save</button>
+    </section>
+
+    <main>
+      <p id="hint" class="hint">Open a YouTube cooking video, then pull the recipe.</p>
+
+      <button id="go" class="btn-primary">Pull recipe from this video</button>
+
+      <div id="status" class="status hidden"></div>
+      <div id="error" class="note error hidden"></div>
+
+      <div id="result" class="result hidden">
+        <div class="result-head">
+          <span id="saved-badge" class="badge hidden">Saved ✓</span>
+          <button id="copy" class="btn-ghost">Copy</button>
+        </div>
+        <pre id="recipe"></pre>
+      </div>
+    </main>
+  </body>
+  <script src="popup.js"></script>
+</html>
