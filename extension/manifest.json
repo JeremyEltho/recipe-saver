@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Recipe Notebook — YouTube to Recipe",
+  "version": "1.0.0",
+  "description": "Pull the transcript from the YouTube video you're watching and turn it into a clean recipe, saved to your Recipe Notebook.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://recipe-notebook-lovat.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Extract recipe from this video"
+  }
+}
